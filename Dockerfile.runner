@@ -1,0 +1,107 @@
+# Version 0.3
+# 显示该镜像是基于 debian:stretch 镜像
+FROM debian:stretch
+# 维护人信息
+MAINTAINER xzhm 475958179@qq.com
+
+# 设置debian的镜像，加快速度
+RUN echo 'deb http://mirrors.aliyun.com/debian/ stretch main non-free contrib' > /etc/apt/sources.list \
+    && echo 'deb http://mirrors.aliyun.com/debian/ stretch-updates main non-free contrib' >> /etc/apt/sources.list \
+    && echo 'deb http://mirrors.aliyun.com/debian/ stretch-backports main non-free contrib' >> /etc/apt/sources.list \
+    && echo 'deb http://mirrors.aliyun.com/debian-security stretch/updates main non-free contrib' >> /etc/apt/sources.list
+
+# 设置时区 更新源
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN apt-get update -yqq
+
+RUN apt-get install tzdata
+RUN dpkg-reconfigure --frontend noninteractive tzdata
+
+# 安装 ssh 软件
+RUN apt-get install -yqq openssh-server build-essential libpng-dev
+RUN mkdir -p /var/run/sshd
+RUN mkdir -p /root/.ssh
+# 取消pam限制
+RUN sed -ri 's/session  required   pam_loginuid.so/#session    required  pam_loginuid.so/g' /etc/pam.d/sshd
+# 复制配置文件到相应位置
+COPY authorized_keys /root/.ssh/authorized_keys
+
+# 更改语言 支持中文
+RUN apt-get install -yqq locales
+RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+    sed -i -e 's/# zh_CN.UTF-8 UTF-8/zh_CN.UTF-8 UTF-8/' /etc/locale.gen && \
+    echo 'LANG="zh_CN.UTF-8"'>/etc/default/locale && \
+    dpkg-reconfigure --frontend=noninteractive locales && \
+    update-locale LANG=zh_CN.UTF-8
+
+# 安装git-running
+RUN apt-get install -yqq wget curl git zip unzip
+RUN \
+    mkdir /mysoft && cd /mysoft && \
+    wget -O /usr/local/bin/gitlab-runner https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-amd64 && \
+    chmod +x /usr/local/bin/gitlab-runner && \
+    useradd --comment 'GitLab Runner' --create-home gitlab-runner --shell /bin/bash && \
+    gitlab-runner install --user=gitlab-runner --working-directory=/home/gitlab-runner && \
+ 	gitlab-runner start && \
+    rm -rf /mysoft
+
+# 安装java maven
+RUN mkdir /mysoft && cd /mysoft && \
+	wget -q --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" https://download.oracle.com/otn-pub/java/jdk/8u192-b12/750e1c8617c5452694857ad95c3ee230/jdk-8u192-linux-x64.tar.gz && \
+	tar -zxf $(ls) && \
+    mv $(ls -d */) oracle-jdk && \
+    mkdir -p /usr/local/java && \
+    mv oracle-jdk /usr/local/java/oracle-jdk && \
+    wget http://mirror.bit.edu.cn/apache/maven/maven-3/3.6.0/binaries/apache-maven-3.6.0-bin.tar.gz && \
+    tar -zxvf apache-maven-3.6.0-bin.tar.gz -C /usr/local/ && \
+    rm -rf apache-maven-3.6.0-bin.tar.gz && \
+    rm -rf jdk-8u192-linux-x64.tar.gz 
+
+RUN echo "export PATH=$PATH:/usr/local/java/oracle-jdk/bin:/usr/local/apache-maven-3.6.0/bin" >> /etc/profile
+
+# 安装php
+RUN wget -O /etc/apt/trusted.gpg.d/php.gpg https://mirror.xtom.com.hk/sury/php/apt.gpg
+RUN apt-get install -yqq apt-transport-https
+RUN sh -c 'echo "deb https://packages.sury.org/php/ stretch main" > /etc/apt/sources.list.d/php.list'
+RUN apt-get update -yqq
+RUN apt-get install -yqq php7.1 php7.1-fpm php7.1-redis php7.1-mysql php7.1-curl php7.1-xml php7.1-json php7.1-zip php7.1-bcmath php7.1-mbstring php7.1-mcrypt php7.1-gd php7.1-common
+RUN sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/' /etc/php/7.1/fpm/php.ini
+
+RUN apt-get install tzdata
+RUN dpkg-reconfigure --frontend noninteractive tzdata
+
+# 安装composer
+RUN cd /mysoft && \
+	curl -sS https://getcomposer.org/installer | php && \
+	mv composer.phar /usr/local/bin/composer
+
+# 安装nodejs
+RUN cd /mysoft && \
+	wget https://nodejs.org/dist/v10.14.1/node-v10.14.1-linux-x64.tar.xz && \
+	xz -d node-v10.14.1-linux-x64.tar.xz && \
+	tar -xvf node-v10.14.1-linux-x64.tar -C /usr/local/ && \
+	ln -sf /usr/local/node-v10.14.1-linux-x64/bin/node /usr/bin/ && \
+	ln -sf /usr/local/node-v10.14.1-linux-x64/bin/npm /usr/bin/ && \
+    npm install -g npm-cache && \
+    npm install -g gulp && \
+    ln -sf /usr/local/node-v10.14.1-linux-x64/bin/npm-cache /usr/bin/ && \
+    ln -sf /usr/local/node-v10.14.1-linux-x64/bin/gulp /usr/bin/ && \
+	rm  -rf node-v10.14.1-linux-x64.tar 
+
+
+# 安装更多服务
+RUN echo "#!/bin/sh -e" > /etc/rc.local
+RUN echo "service ssh start" >> /etc/rc.local
+RUN echo "exit 0" >> /etc/rc.local
+RUN chmod 755 /etc/rc.local
+
+
+# 增加用户
+RUN apt-get install -yqq sudo vim
+RUN useradd -d /home/ubuntu -m -s /bin/bash -G sudo ubuntu
+RUN echo "ubuntu:ubuntu" |chpasswd
+
+
+# 开放端口
+EXPOSE 22 
