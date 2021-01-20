@@ -92,7 +92,7 @@ def disk(args):
 
 
 def md5sum(args):
-    with os.popen("docker exec  " + args.container + " bash -c  \"md5sum  /home/ubuntu/java/sbin/*.jar\"") aspipe:
+    with os.popen("docker exec  " + args.container + " bash -c  \"md5sum  /home/ubuntu/java/sbin/*.jar\"") as pipe:
         md5sum_values = pipe.read().strip()
     pipe.close()
     if not 'md5sum_values' in locals():
