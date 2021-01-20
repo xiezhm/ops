@@ -1,5 +1,7 @@
 #!/usr/bin/python3
-# originaly fromimport osimport json
+# originaly from
+import os
+import json
 import argparse
 import sys
 import time
@@ -92,7 +94,7 @@ def disk(args):
 
 
 def md5sum(args):
-    with os.popen("docker exec  " + args.container + " bash -c  \"md5sum  /home/ubuntu/java/sbin/*.jar\"") as pipe:
+    with os.popen("docker exec  " + args.container + " bash -c  \"md5sum  /home/ubuntu/java/sbin/*.jar\"") aspipe:
         md5sum_values = pipe.read().strip()
     pipe.close()
     if not 'md5sum_values' in locals():
