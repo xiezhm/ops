@@ -103,7 +103,7 @@ def md5sum(args):
 
 
 def version(args):
-    with os.popen("docker ps --format '{{.Image}}' --filter name=" + args.container) as pipe:
+    with os.popen("docker ps --format '{{.Image}}' --filter name=" + args.container + " |awk -F ':' '{print $NF}' ") as pipe:
         docker_version = pipe.read().strip()
     pipe.close()
     if 'docker_version' not in locals():
