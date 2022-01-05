@@ -22,7 +22,7 @@ def post_tg(messige):
 def query_loki():
     data="{compose_project=\"opt\"}|= \"ERROR\""
     ago2m = (datetime.datetime.now()-datetime.timedelta(minutes=30)).timestamp()
-    req = requests.get("http://54.169.254.101:3100/loki/api/v1/query_range?query={}&start={}".format(data,ago2m), headers=headers).json()
+    req = requests.get("http://127.0.0.1:3100/loki/api/v1/query_range?query={}&start={}".format(data,ago2m), headers=headers).json()
     for i in req["data"]["result"]:
         host = i["stream"]["host"]
         container_name = i["stream"]["container_name"]
@@ -43,7 +43,7 @@ query_loki()
 def nginx_loki():
     date_time = datetime.datetime.now()
     data="topk(10, sum by (xff) (count_over_time({app=\"nginx\"} | json |  __error__=\"\" [2m])))"
-    req = requests.get("http://54.169.254.101:3100/loki/api/v1/query?query={}".format(data), headers=headers).json()
+    req = requests.get("http://127.0.0.1:3100/loki/api/v1/query?query={}".format(data), headers=headers).json()
     for i in req["data"]["result"]:
         ip=i["metric"]["xff"] 
         sum_mumbers=i["value"][-1]
